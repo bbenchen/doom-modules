@@ -184,3 +184,11 @@ output buffer."
         :m "]p"  #'markdown-demote
         :m "[l"  #'markdown-previous-link
         :m "]l"  #'markdown-next-link))
+
+(use-package! flymake-markdownlint
+  :when (modulep! :checkers syntax +flymake)
+  :config
+  (add-hook! 'markdown-mode-hook #'flymake-markdownlint-setup)
+
+  (if (modulep! +tree-sitter)
+      (add-hook! 'markdown-ts-mode-hook #'flymake-markdownlint-setup)))
