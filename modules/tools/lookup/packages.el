@@ -30,11 +30,13 @@
   (if (featurep :system 'macos)
       (package! osx-dictionary :pin "8e6897844c4d6ff6039b31569058273632afea16")
     (package! define-word :pin "31a8c67405afa99d0e25e7c86a4ee7ef84a808fe")
+    (when (modulep! +offline)
+      (package! wordnut :pin "dffc75a455d0d4458b7555f4c051c51d71c8e18a")
+      (package! synosaurus :pin "690755ce88a50e65ab0441ce9aabe6341aae3964")))
+
+  (unless (modulep! +offline)
     ;; REVIEW: This fork fixes SavchenkoValeriy/emacs-powerthesaurus#40.
     (package! powerthesaurus
       :recipe (:host github
                :repo "doomelpa/powerthesaurus")
-      :pin "d9ebb866f6fce469102665f187266f0a041cfc4b")
-    (when (modulep! +offline)
-      (package! wordnut :pin "dffc75a455d0d4458b7555f4c051c51d71c8e18a")
-      (package! synosaurus :pin "690755ce88a50e65ab0441ce9aabe6341aae3964"))))
+      :pin "d9ebb866f6fce469102665f187266f0a041cfc4b")))
