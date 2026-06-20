@@ -20,7 +20,8 @@
 ;;; Leader keys
 
 (map! :leader
-      :desc "Evaluate line/region"        "e"   #'+eval/line-or-region
+      (:when (modulep! :tools eval)
+        :desc "Evaluate line/region"        "e"   #'+eval/line-or-region)
 
       (:prefix ("l" . "<localleader>")) ; bound locally
       (:prefix ("!" . "checkers"))      ; bound by flycheck
@@ -31,12 +32,14 @@
        :desc "Recompile"                             "C"   #'recompile
        :desc "Jump to definition"                    "d"   #'+lookup/definition
        :desc "Jump to references"                    "D"   #'+lookup/references
-       :desc "Evaluate buffer/region"                "e"   #'+eval/buffer-or-region
-       :desc "Evaluate & replace region"             "E"   #'+eval/region-and-replace
+       (:when  (modulep! :tools eval)
+         :desc "Evaluate buffer/region"              "e"   #'+eval/buffer-or-region
+         :desc "Evaluate & replace region"           "E"   #'+eval/region-and-replace)
        :desc "Format buffer/region"                  "f"   #'+format/region-or-buffer
        :desc "Find implementations"                  "i"   #'+lookup/implementations
        :desc "Jump to documentation"                 "k"   #'+lookup/documentation
-       :desc "Send buffer/region to repl"            "s"   #'+eval/buffer-or-region-in-repl
+       (:when (modulep! :tools eval)
+         :desc "Send buffer/region to repl"          "s"   #'+eval/buffer-or-region-in-repl)
        :desc "Find type definition"                  "t"   #'+lookup/type-definition
        :desc "Delete trailing whitespace"            "w"   #'delete-trailing-whitespace
        :desc "Delete trailing newlines"              "W"   #'doom/delete-trailing-newlines
@@ -224,8 +227,9 @@
        :desc "Browser"            "b"  #'browse-url-of-file
        :desc "Debugger"           "d"  #'+debugger/start
        :desc "New frame"          "f"  #'make-frame
-       :desc "REPL"               "r"  #'+eval/open-repl-other-window
-       :desc "REPL (same window)" "R"  #'+eval/open-repl-same-window
+       (:when (modulep! :tools eval)
+         :desc "REPL"               "r"  #'+eval/open-repl-other-window
+         :desc "REPL (same window)" "R"  #'+eval/open-repl-same-window)
        :desc "Dired"              "-"  #'dired-jump
        (:when (modulep! :ui neotree)
         :desc "Project sidebar"               "p" #'+neotree/open
@@ -253,12 +257,15 @@
         :desc "Reveal in Finder"           "o" #'+macos/reveal-in-finder
         :desc "Reveal project in Finder"   "O" #'+macos/reveal-project-in-finder
         (:prefix ("s" . "send to application")
-         :desc "Send to Transmit"           "t" #'+macos/send-to-transmit
-         :desc "Send project to Transmit"   "T" #'+macos/send-project-to-transmit
-         :desc "Send to Launchbar"          "l" #'+macos/send-to-launchbar
-         :desc "Send project to Launchbar"  "L" #'+macos/send-project-to-launchbar
-         :desc "Open in iTerm"              "i" #'+macos/open-in-iterm
-         :desc "Open in new iTerm window"   "I" #'+macos/open-in-iterm-new-window))
+         (:when (file-exists-p "/Applications/Transmit.app")
+           :desc "Send to Transmit"           "t" #'+macos/send-to-transmit
+           :desc "Send project to Transmit"   "T" #'+macos/send-project-to-transmit)
+         (:when (file-exists-p "/Applications/LaunchBar.app")
+           :desc "Send to Launchbar"          "l" #'+macos/send-to-launchbar
+           :desc "Send project to Launchbar"  "L" #'+macos/send-project-to-launchbar)
+         (:when (file-exists-p "/Applications/iTerm.app")
+           :desc "Open in iTerm"               "i" #'+macos/open-in-iterm
+           :desc "Open in new iTerm window"    "I" #'+macos/open-in-iterm-new-window)))
        (:when (modulep! :tools docker)
         :desc "Docker" "D" #'docker)
        (:when (modulep! :tools llm)
@@ -357,7 +364,8 @@
        (:when (modulep! :tools magit)
         :desc "Magit dispatch"             "/"   #'magit-dispatch
         :desc "Magit file dispatch"        "."   #'magit-file-dispatch
-        :desc "Forge dispatch"             "'"   #'forge-dispatch
+        (:when (modulep! :tools magit +forge)
+          :desc "Forge dispatch"           "'"   #'forge-dispatch)
         :desc "Magit status"               "g"   #'magit-status
         :desc "Magit status here"          "G"   #'magit-status-here
         :desc "Magit file delete"          "x"   #'magit-file-delete
@@ -365,38 +373,42 @@
         :desc "Magit clone"                "C"   #'magit-clone
         :desc "Magit fetch"                "F"   #'magit-fetch
         :desc "Magit buffer log"           "L"   #'magit-log-buffer-file
-        :desc "Git stage file"             "S"   #'magit-stage-file
-        :desc "Git unstage file"           "U"   #'magit-unstage-file
+        :desc "Git stage file"             "S"   #'magit-file-stage
+        :desc "Git unstage file"           "U"   #'magit-file-unstage
         (:prefix ("f" . "find")
          :desc "Find file"                 "f"   #'magit-find-file
          :desc "Find gitconfig file"       "g"   #'magit-find-git-config-file
          :desc "Find commit"               "c"   #'magit-show-commit
-         :desc "Find issue"                "i"   #'forge-visit-issue
-         :desc "Find pull request"         "p"   #'forge-visit-pullreq)
+         (:when (modulep! :tools magit +forge)
+           :desc "Find issue"              "i"   #'forge-visit-issue
+           :desc "Find pull request"       "p"   #'forge-visit-pullreq))
         (:prefix ("o" . "open in browser")
          :desc "Browse file or region"     "."   #'+vc/browse-at-remote
          :desc "Browse homepage"           "h"   #'+vc/browse-at-remote-homepage
-         :desc "Browse remote"             "r"   #'forge-browse-remote
-         :desc "Browse commit"             "c"   #'forge-browse-commit
-         :desc "Browse an issue"           "i"   #'forge-browse-issue
-         :desc "Browse a pull request"     "p"   #'forge-browse-pullreq
-         :desc "Browse issues"             "I"   #'forge-browse-issues
-         :desc "Browse pull requests"      "P"   #'forge-browse-pullreqs)
+         (:when (modulep! :tools magit +forge)
+           :desc "Browse remote"           "r"   #'forge-browse-remote
+           :desc "Browse commit"           "c"   #'forge-browse-commit
+           :desc "Browse an issue"         "i"   #'forge-browse-issue
+           :desc "Browse a pull request"   "p"   #'forge-browse-pullreq
+           :desc "Browse issues"           "I"   #'forge-browse-issues
+           :desc "Browse pull requests"    "P"   #'forge-browse-pullreqs))
         (:prefix ("l" . "list")
          (:when (modulep! :tools gist)
           :desc "List gists"               "g"   #'gist-list)
          :desc "List repositories"         "r"   #'magit-list-repositories
          :desc "List submodules"           "s"   #'magit-list-submodules
-         :desc "List issues"               "i"   #'forge-list-issues
-         :desc "List pull requests"        "p"   #'forge-list-pullreqs
-         :desc "List notifications"        "n"   #'forge-list-notifications)
+         (:when (modulep! :tools magit +forge)
+           :desc "List issues"             "i"   #'forge-list-issues
+           :desc "List pull requests"      "p"   #'forge-list-pullreqs
+           :desc "List notifications"      "n"   #'forge-list-notifications))
         (:prefix ("c" . "create")
          :desc "Initialize repo"           "r"   #'magit-init
          :desc "Clone repo"                "R"   #'magit-clone
          :desc "Commit"                    "c"   #'magit-commit-create
          :desc "Fixup"                     "f"   #'magit-commit-fixup
-         :desc "Issue"                     "i"   #'forge-create-issue
-         :desc "Pull request"              "p"   #'forge-create-pullreq)))
+         (:when (modulep! :tools magit +forge)
+           :desc "Issue"                   "i"   #'forge-create-issue
+           :desc "Pull request"            "p"   #'forge-create-pullreq))))
 
       ;;; <leader> w --- workspaces/windows
       (:prefix-map ("w" . "workspaces/windows")
