@@ -176,9 +176,11 @@ stored in `persp-save-dir'.")
 
   ;; Per-project workspaces, but reuse current workspace if empty
   ;; REVIEW: Remove when ivy module is removed
-  (setq projectile-switch-project-action #'+workspaces-switch-to-project-h
-        counsel-projectile-switch-project-action
-        '(1 ("o" +workspaces-switch-to-project-h "open project in new workspace")
+  (setq projectile-switch-project-action #'+workspaces-switch-to-project-h)
+
+  (when (modulep! :completion ivy)
+    (setq counsel-projectile-switch-project-action
+          '(1 ("o" +workspaces-switch-to-project-h "open project in new workspace")
             ("O" counsel-projectile-switch-project-action "jump to a project buffer or file")
             ("f" counsel-projectile-switch-project-action-find-file "jump to a project file")
             ("d" counsel-projectile-switch-project-action-find-dir "jump to a project directory")
@@ -199,7 +201,7 @@ stored in `persp-save-dir'.")
             ("xs" counsel-projectile-switch-project-action-run-shell "invoke shell from project root")
             ("xe" counsel-projectile-switch-project-action-run-eshell "invoke eshell from project root")
             ("xt" counsel-projectile-switch-project-action-run-term "invoke term from project root")
-            ("X" counsel-projectile-switch-project-action-org-capture "org-capture into project")))
+            ("X" counsel-projectile-switch-project-action-org-capture "org-capture into project"))))
 
   (when (modulep! :completion helm)
     (after! helm-projectile
