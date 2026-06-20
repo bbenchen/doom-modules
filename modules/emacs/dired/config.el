@@ -70,15 +70,10 @@ Fixes #3939: unsortable dired entries on Windows."
 
 
 (use-package! dirvish
-  :commands (dirvish-dired-noselect-a dirvish--find-entry)
-  :general (dired-mode-map "C-c C-r" #'dirvish-rsync)
   :init
   (setq dirvish-cache-dir (file-name-concat doom-cache-dir "dirvish/"))
-  ;; HACK: ...
-  (advice-add #'dired--find-file :override #'dirvish--find-entry)
-  (advice-add #'dired-noselect :around #'dirvish-dired-noselect-a)
-  :config
   (dirvish-override-dired-mode)
+  :config
   (set-popup-rule! "^ ?\\*\\(?:[Dd]irvish\\|SIDE :: \\).*" :ignore t)
 
   ;; HACK: `dirvish-pre-redisplay-h' is called via `pre-redisplay-functions'
@@ -138,7 +133,9 @@ Fixes #3939: unsortable dired entries on Windows."
       (add-hook 'dirvish-directory-view-mode-hook #'centaur-tabs-local-mode)))
 
   ;; TODO: Needs more polished keybinds for non-Evil users
-  (map! :map dirvish-mode-map
+  (map! :map dired-mode-map
+        "C-c C-r" #'dirvish-rsync
+        :map dirvish-mode-map
         :n  "?"   #'dirvish-dispatch
         :n  "q"   #'dirvish-quit
         :n  "b"   #'dirvish-quick-access
