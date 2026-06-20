@@ -46,8 +46,9 @@
 
   ;;
   ;;; Extensions
-  (use-package! anzu
-    :after-call isearch-mode)
+  (unless (modulep! +light)
+    (use-package! anzu
+      :after-call isearch-mode))
 
   (use-package! evil-anzu
     :when (modulep! :editor evil)

@@ -405,34 +405,33 @@ Requires `anzu', also `evil-anzu' if using `evil-mode' for compatibility with
   "Displays color-coded error status & icon for the current buffer."
   :local t)
 
-(add-hook! '(flycheck-status-changed-functions
-             flycheck-mode-hook)
-  (defun +modeline-checker-update (&optional status)
-    "Update flycheck text via STATUS."
-    (setq +modeline-checker
-          (pcase status
-            (`finished
-             (if flycheck-current-errors
-                 (let-alist (flycheck-count-errors flycheck-current-errors)
-                   (let ((error (or .error 0))
-                         (warning (or .warning 0))
-                         (info (or .info 0)))
-                     (+modeline-format-icon 'codicon "nf-cod-error"
-                                            (number-to-string (+ error warning info))
-                                            (cond ((> error 0)   'error)
-                                                  ((> warning 0) 'warning)
-                                                  ('success))
-                                            (format "Errors: %d, Warnings: %d, Debug: %d"
-                                                    error
-                                                    warning
-                                                    info))))
-               (+modeline-format-icon 'material "nf-md-check" "" 'success)))
-            (`running     (+modeline-format-icon 'faicon "nf-fa-hourglass" "*" 'mode-line-inactive "Running..."))
-            (`errored     (+modeline-format-icon 'material "nf-md-sim_alert" "!" 'error "Errored!"))
-            (`interrupted (+modeline-format-icon 'material "nf-md-pause" "!" 'mode-line-inactive "Interrupted"))
-            (`suspicious  (+modeline-format-icon 'material "nf-md-priority_high" "!" 'error "Suspicious"))))))
-
-
+(if (modulep! :checkers syntax -flymake)
+    (add-hook! '(flycheck-status-changed-functions
+                 flycheck-mode-hook)
+      (defun +modeline-checker-update (&optional status)
+        "Update flycheck text via STATUS."
+        (setq +modeline-checker
+              (pcase status
+                (`finished
+                 (if flycheck-current-errors
+                     (let-alist (flycheck-count-errors flycheck-current-errors)
+                       (let ((error (or .error 0))
+                             (warning (or .warning 0))
+                             (info (or .info 0)))
+                         (+modeline-format-icon 'codicon "nf-cod-error"
+                                                (number-to-string (+ error warning info))
+                                                (cond ((> error 0)   'error)
+                                                      ((> warning 0) 'warning)
+                                                      ('success))
+                                                (format "Errors: %d, Warnings: %d, Debug: %d"
+                                                        error
+                                                        warning
+                                                        info))))
+                   (+modeline-format-icon 'material "nf-md-check" "" 'success)))
+                (`running     (+modeline-format-icon 'faicon "nf-fa-hourglass" "*" 'mode-line-inactive "Running..."))
+                (`errored     (+modeline-format-icon 'material "nf-md-sim_alert" "!" 'error "Errored!"))
+                (`interrupted (+modeline-format-icon 'material "nf-md-pause" "!" 'mode-line-inactive "Interrupted"))
+                (`suspicious  (+modeline-format-icon 'material "nf-md-priority_high" "!" 'error "Suspicious")))))))
 
 ;;; `+modeline-selection-info'
 (defsubst +modeline--column (pos)
@@ -489,14 +488,29 @@ lines are selected, or the NxM dimensions of a block selection.")
   `(:eval
     (let ((sys (coding-system-plist buffer-file-coding-system))
           (eol (coding-system-eol-type-mnemonic buffer-file-coding-system)))
-      (concat (unless (equal eol ,(if (featurep :system 'windows) "CRLF" "LF"))
-                (concat "  " eol " "))
+      (concat (if (equal eol (if (featurep :system 'windows) "CRLF" "LF"))
+                (concat eol " "))
               (if (memq (plist-get sys :category)
                         '(coding-category-undecided coding-category-utf-8))
-                  (unless (string-match-p "utf-8" (symbol-name buffer-file-coding-system))
+                  (if (string-match-p "utf-8" (symbol-name buffer-file-coding-system))
                     "UTF-8  ")
                 (concat (upcase (symbol-name (plist-get sys :name)))
                         "  "))))))
+
+;; Input method
+(def-modeline-var! +modeline-input-method
+  `(:eval
+    (propertize
+     (cond (current-input-method
+            (concat current-input-method-title
+                    "  "))
+           (t ""))
+     'face (if (and (+modeline-active)
+                    (bound-and-true-p rime-mode)
+                    (equal current-input-method "rime")
+                    (rime--should-enable-p)
+                    (not (rime--should-inline-ascii-p)))
+               'success))))
 
 (def-modeline-var! +modeline-pdf-page nil
   "Display page number of pdf"
@@ -533,9 +547,9 @@ lines are selected, or the NxM dimensions of a block selection.")
     (vc-mode ("  "
               ,(nerd-icons-octicon "nf-oct-git_branch" :v-adjust 0.0)
               vc-mode " "))
-    "  "
+    +modeline-input-method
     +modeline-encoding
-    (+modeline-checker ("" +modeline-checker "   "))))
+    (+modeline-checker ("" +modeline-checker "    "))))
 
 (def-modeline! 'project
   `(" "
