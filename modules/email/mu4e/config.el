@@ -340,15 +340,16 @@ Acts like a singular `mu4e-view-save-attachments', without the saving."
                   maxsizelen (apply #'max (mapcar (lambda (i) (length (plist-get i :size))) partinfo))
                   sizefmt (format "%%-%ds " maxsizelen))
             (dolist (pinfo partinfo)
-              (push (cons (concat (propertize (format "%-2s " (plist-get pinfo :index)) 'face '(bold font-lock-type-face))
-                                  (when (featurep 'nerd-icons)
-                                    (nerd-icons-icon-for-file (or (plist-get pinfo :filename) "")))
-                                  (format fnamefmt (or (plist-get pinfo :filename)
-                                                       (propertize (plist-get pinfo :type) 'face '(italic font-lock-doc-face))))
-                                  (format sizefmt (propertize (plist-get pinfo :size) 'face 'font-lock-builtin-face))
-                                  (propertize (plist-get pinfo :mimetype) 'face 'font-lock-constant-face))
-                          (plist-get pinfo :part))
-                    labeledparts))
+              (if (plist-get pinfo :filename)
+                  (push (cons (concat (propertize (format "%-2s " (plist-get pinfo :index)) 'face '(bold font-lock-type-face))
+                                      (when (featurep 'nerd-icons)
+                                        (nerd-icons-icon-for-file (or (plist-get pinfo :filename) "")))
+                                      (format fnamefmt (or (plist-get pinfo :filename)
+                                                           (propertize (plist-get pinfo :type) 'face '(italic font-lock-doc-face))))
+                                      (format sizefmt (propertize (plist-get pinfo :size) 'face 'font-lock-builtin-face))
+                                      (propertize (plist-get pinfo :mimetype) 'face 'font-lock-constant-face))
+                              (plist-get pinfo :part))
+                        labeledparts)))
             labeledparts))))
 
   (map! :localleader
@@ -376,6 +377,7 @@ Acts like a singular `mu4e-view-save-attachments', without the saving."
 This should already be the case yet it does not always seem to be."
     :before #'mu4e-compose-new
     :before #'mu4e-compose-reply
+    :before #'mu4e-compose-wide-reply
     :before #'mu4e-compose-forward
     :before #'mu4e-compose-resend
     (read-only-mode -1))
@@ -442,6 +444,7 @@ This should already be the case yet it does not always seem to be."
     :before #'+mu4e/attach-files
     :before #'mu4e-compose-new
     :before #'mu4e-compose-reply
+    :before #'mu4e-compose-wide-reply
     :before #'mu4e-compose-forward
     :before #'mu4e-compose-resend
     (when (xor (/= 1 (prefix-numeric-value current-prefix-arg))
