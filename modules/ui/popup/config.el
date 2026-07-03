@@ -144,7 +144,7 @@ prevent the popup(s) from messing up the UI (or vice versa)."
        :vslot -3 :size +popup-shrink-to-fit :autosave t :select ignore :quit t :ttl 0)
       ("^\\*doom:"  ; editing buffers (interaction required)
        :vslot -4 :size 0.35 :autosave t :select t :modeline t :quit nil :ttl t)
-      ("^\\*doom:\\(?:v?term\\|e?shell\\)-popup"  ; editing buffers (interaction required)
+      ("^\\*doom:\\(?:v?term\\|e?shell\\|ghostel\\)-popup"  ; editing buffers (interaction required)
        :vslot -5 :size 0.35 :select t :modeline nil :quit nil :ttl nil)
       ("^\\*\\(?:Wo\\)?Man "
        :vslot -6 :size 0.45 :select t :quit t :ttl 0)
@@ -168,7 +168,8 @@ prevent the popup(s) from messing up the UI (or vice versa)."
     ("^\\*CPU-Profiler-Report "    :side bottom :vslot 100 :slot 1 :height 0.4 :width 0.5 :quit nil)
     ("^\\*Memory-Profiler-Report " :side bottom :vslot 100 :slot 2 :height 0.4 :width 0.5 :quit nil)
     ("^\\*Process List\\*" :side bottom :vslot 101 :size 0.25 :select t :quit t)
-    ("^\\*\\(?:Proced\\|timer-list\\|Abbrevs\\|Output\\|Occur\\|unsent mail.*?\\|message\\)\\*" :ignore t)))
+    ("^\\*\\(?:Proced\\|timer-list\\|Abbrevs\\|Output\\|Occur\\|unsent mail.*?\\|message\\)\\*" :ignore t)
+    ("^ \\*transient" :ignore t)))
 
 (add-hook 'doom-init-ui-hook #'+popup-mode 'append)
 

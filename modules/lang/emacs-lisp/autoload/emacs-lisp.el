@@ -287,7 +287,7 @@ selected before this command was invoked."
                      (and (stringp file-base)
                           (equal (symbol-name (doom-unquote (nth 1 (read (current-buffer)))))
                                  file-base)))))))
-         (not (locate-dominating-file default-directory ".doommodule")))))
+         (not (doom-config-locate 'module default-directory)))))
 
 (defvar-local +emacs-lisp-reduced-flymake-byte-compile--process nil)
 
@@ -323,11 +323,15 @@ as `+emacs-lisp-non-package-mode' will enable it and disable the other checkers.
                         "-Q"
                         "--batch"
                         ,@(mapcan (lambda (p) (list "-L" p)) elisp-flymake-byte-compile-load-path)
-                        ;; this is what silences the byte compiler
-                        "--eval" ,(prin1-to-string `(setq doom-profile ',doom-profile
-                                                          doom-modules ',doom-modules
-                                                          doom-disabled-packages ',doom-disabled-packages
-                                                          byte-compile-warnings ',+emacs-lisp-linter-warnings))
+                        ;; Appease the byte-compiler by loading Doom
+                        "-L" ,doom-core-dir
+                        "--eval" ,(prin1-to-string
+                                   `(let ((gc-cons-threshold most-positive-fixnum)
+                                          (gc-cons-percentage 1.0))
+                                      (require 'doom)
+                                      (doom-initialize ,(doom-profile->id doom-profile))
+                                      (setq byte-compile-warnings ',+emacs-lisp-linter-warnings)
+                                      (startup--load-user-init-file nil)))
                         "-f" "elisp-flymake--batch-compile-for-flymake"
                         ,tmp-file)
              :stderr "*stderr of +elisp-flymake-byte-compile-out*"
@@ -373,24 +377,24 @@ as `+emacs-lisp-non-package-mode' will enable it and disable the other checkers.
       flycheck-disabled-checkers)
     (setq-local flycheck-emacs-lisp-check-form
                 (prin1-to-string
-                 `(progn
-                    (setq doom-modules ',doom-modules
-                          doom-disabled-packages ',doom-disabled-packages
-                          byte-compile-warnings ',+emacs-lisp-linter-warnings)
+                 `(let ((enable-local-eval nil)
+                        (enable-local-variables :safe))
+                    (setq no-native-compile t)
                     (condition-case e
-                        (progn
+                        (let ((gc-cons-threshold most-positive-fixnum)
+                              (gc-cons-percentage 1.0))
                           (require 'doom)
-                          (require 'doom-cli)
-                          (doom-initialize t)
-                          (doom-startup))
+                          (doom-initialize ,(doom-profile->id doom-profile))
+                          (setq byte-compile-warnings ',+emacs-lisp-linter-warnings)
+                          (startup--load-user-init-file nil))
                       (error
                        (princ
-                        (format "%s:%d:%d:Error:Failed to load Doom: %s\n"
+                        (format "%s:%d:%d:Error:Failed to load Doom: %S\n"
                                 (or ,(ignore-errors
                                        (file-name-nondirectory
                                         (buffer-file-name (buffer-base-buffer))))
                                     (car command-line-args-left))
-                                0 0 (error-message-string e)))))
+                                0 0 e))))
                     ,(read (default-toplevel-value 'flycheck-emacs-lisp-check-form))))
                 flycheck-disabled-checkers
                 (cons 'emacs-lisp-checkdoc
@@ -405,7 +409,7 @@ Essentially, this means in any elisp file that either:
 - Is not a theme in `custom-theme-load-path',
 - Lacks a `provide' statement,
 - Lives in a project with a .doommodule file,
-- Is a dotfile (like .dir-locals.el or .doomrc).
+- Is a dotfile (like .dir-locals.el or .doom).
 
 This generally applies to your private config (`doom-user-dir') or Doom's source
 \(`doom-emacs-dir')."

@@ -241,6 +241,9 @@
         :desc "Open directory in dirvish"     "/" #'dirvish
         :desc "Project sidebar"               "p" #'dirvish-side
         :desc "Find file in project sidebar"  "P" #'+dired/dirvish-side-and-follow)
+       (:when (modulep! :term ghostel)
+        :desc "Toggle ghostel popup"          "t" #'+ghostel/toggle
+        :desc "Open ghostel here"             "T" #'+ghostel/here)
        (:when (modulep! :term shell)
         :desc "Toggle shell popup"            "t" #'+shell/toggle
         :desc "Open shell here"               "T" #'+shell/here)
@@ -353,8 +356,8 @@
       ;;; <leader> v --- versioning
       (:prefix-map ("v" . "versioning")
        :desc "Git revert file"             "R"   #'vc-revert
-       :desc "Kill link to remote"         "y"   #'+vc/browse-at-remote-kill
-       :desc "Kill link to homepage"       "Y"   #'+vc/browse-at-remote-kill-homepage
+       :desc "Kill link to remote"         "y"   #'+vc/git-link-kill
+       :desc "Kill link to homepage"       "Y"   #'+vc/git-link-kill-homepage
        (:when (modulep! :ui vc-gutter)
         :desc "Git revert hunk"            "r"   #'+vc-gutter/revert-hunk
         :desc "Git stage hunk"             "s"   #'+vc-gutter/stage-hunk
@@ -383,8 +386,8 @@
            :desc "Find issue"              "i"   #'forge-visit-issue
            :desc "Find pull request"       "p"   #'forge-visit-pullreq))
         (:prefix ("o" . "open in browser")
-         :desc "Browse file or region"     "."   #'+vc/browse-at-remote
-         :desc "Browse homepage"           "h"   #'+vc/browse-at-remote-homepage
+         :desc "Browse file or region"     "."   #'+vc/git-link
+         :desc "Browse homepage"           "h"   #'+vc/git-link-homepage
          (:when (modulep! :tools magit +forge)
            :desc "Browse remote"           "r"   #'forge-browse-remote
            :desc "Browse commit"           "c"   #'forge-browse-commit
