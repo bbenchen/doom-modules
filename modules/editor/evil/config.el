@@ -192,8 +192,9 @@ directives. By default, this only recognizes C directives."
   ;;   spaces. It doesn't in vim, so it shouldn't in evil.
   (defadvice! +evil--no-squeeze-on-fill-a (fn &rest args)
     :around '(evil-fill evil-fill-and-move)
-    (letf! (defun fill-region (from to &optional justify _nosqueeze to-eop)
-             (funcall fill-region from to justify t to-eop))
+    (letf! (defadvice fill-region
+               (:around (fn from to &optional justify _nosqueeze to-eop))
+             (funcall fn from to justify t to-eop))
       (apply fn args)))
 
   ;; HACK: Make Emacs registers recognize and treat Evil registers like their
@@ -349,7 +350,9 @@ don't offer any/enough real value to users.")
   :hook ((csharp-mode csharp-ts-mode) . +evil-embrace-angle-bracket-modes-hook-h)
   :hook ((java-mode java-ts-mode) . +evil-embrace-angle-bracket-modes-hook-h)
   :hook ((scala-mode scala-ts-mode) . +evil-embrace-scala-mode-hook-h)
-  :hook ((swift-mode typescript-mode rustic-mode) . +evil-embrace-angle-bracket-modes-hook-h)
+  :hook ((swift-mode swift-ts-mode) . +evil-embrace-angle-bracket-modes-hook-h)
+  :hook ((typescript-mode typescript-ts-mode) . +evil-embrace-angle-bracket-modes-hook-h)
+  :hook ((rustic-mode rust-ts-mode) . +evil-embrace-angle-bracket-modes-hook-h)
   :init
   (after! evil-surround
     (evil-embrace-enable-evil-surround-integration))

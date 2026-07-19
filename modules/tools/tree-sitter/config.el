@@ -45,11 +45,12 @@
   (defadvice! +tree-sitter--maybe-remap-major-mode-a (fn mode)
     :around #'major-mode-remap
     (let ((mode (funcall fn mode)))
-      (if-let* ((ts (get mode '+tree-sitter))
+      (if-let* ((ts (get mode '+tree-sitter)) ; registered by `set-tree-sitter!'
                 (fallback-mode (car ts)))
-          (cond ((not (treesit-available-p))
+          (cond ((get mode '+tree-sitter-mode))
+                ((not (eval-when-compile (treesit-available-p)))
                  (message "Treesit unavailable, falling back to `%S'" fallback-mode)
-                 fallback-mode)
+                 (put mode '+tree-sitter-mode fallback-mode))
                 ((not (fboundp mode))
                  (message "Couldn't find `%S', falling back to `%S'" mode fallback-mode)
                  fallback-mode)
@@ -80,21 +81,22 @@
                           ;; Ensure grammars are present (and prompt to install
                           ;; them if needed).
                           (if-let* ((grammars
-                                     (cl-remove-if (doom-rpartial #'treesit-ready-p 'message)
-                                                   (cdr ts))))
+                                     (cl-loop for g in (cdr ts)
+                                              unless (treesit-ready-p g 'message)
+                                              collect g)))
                               (if (or (eq treesit-auto-install-grammar 'always)
                                       (if (eq treesit-auto-install-grammar 'ask)
-                                          (y-or-n-p
-                                           (format "Missing tree-sitter grammars: %s\nInstall now?"
-                                                   (mapconcat #'symbol-name grammars ", ")))))
+                                          (and (not non-essential)
+                                               (y-or-n-p
+                                                (format "Missing tree-sitter grammars: %s\nInstall now?"
+                                                        (mapconcat #'symbol-name grammars ", "))))))
                                   (mapc #'treesit-install-language-grammar grammars)
                                 (message "Treesit grammars missing (%s), falling back to `%s'..."
                                          (mapconcat #'symbol-name grammars ", ")
                                          fallback-mode)
                                 nil)
                             t)))
-                 (put mode '+tree-sitter-ensured t)
-                 mode)
+                 (put mode '+tree-sitter-mode mode))
                 (fallback-mode))
         mode)))
 
@@ -129,7 +131,6 @@
                  (r "https://github.com/r-lib/tree-sitter-r" nil nil nil nil)
                  (sql "https://github.com/DerekStride/tree-sitter-sql" "gh-pages" nil nil nil)
                  (surface "https://github.com/connorlay/tree-sitter-surface" nil nil nil nil)
-                 (toml "https://github.com/tree-sitter/tree-sitter-toml" nil nil nil nil)
                  (typst "https://github.com/uben0/tree-sitter-typst" "master" "src" nil nil)
                  (systemverilog "https://github.com/gmlarumbe/tree-sitter-systemverilog" nil nil nil nil)
                  (vhdl "https://github.com/alemuller/tree-sitter-vhdl" nil nil nil nil)
@@ -137,7 +138,13 @@
                  (wast "https://github.com/wasm-lsp/tree-sitter-wasm" nil "wast/src" nil nil)
                  (wat "https://github.com/wasm-lsp/tree-sitter-wasm" nil "wat/src" nil nil)
                  (wgsl "https://github.com/mehmetoguzderin/tree-sitter-wgsl" nil nil nil nil)))
-    (cl-pushnew map treesit-language-source-alist :test #'eq :key #'car)))
+    (cl-pushnew map treesit-language-source-alist :test #'eq :key #'car))
+
+  (unless (assq 'toml treesit-language-source-alist)
+    ;; REVIEW: Create :lang toml?
+    (set-tree-sitter! 'conf-toml-mode 'toml-ts-mode  ; introduced in 29.1
+      '((toml :url "https://github.com/tree-sitter-grammars/tree-sitter-toml"
+              :rev "v0.7.0")))))
 
 
 ;; TODO: combobulate or evil-textobj-tree-sitter

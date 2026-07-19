@@ -107,7 +107,11 @@ Use `+emacs-lisp/change-working-buffer' to change this. Only applies to
   (dolist (mode '(emacs-lisp-mode lisp-data-mode lisp-interaction-mode))
     (font-lock-add-keywords
      mode (append `(;; custom Doom cookies
-                    ("^;;;###\\(autodef\\|if\\|package\\)[ \n]" (1 font-lock-warning-face t)))
+                    ("^;;;###\\(autodef\\|if\\|package\\)[ \n]" (1 font-lock-warning-face t))
+                    ;; defun* and defun! blocks in `letf!'
+                    ("(\\(defun[!*]\\)\\_>[ \t]*\\(\\(?:\\sw\\|\\s_\\)+\\)?"
+                     (1 font-lock-keyword-face)
+                     (2 font-lock-function-name-face nil t)))
                   ;; highlight defined, special variables & functions
                   (when +emacs-lisp-enable-extra-fontification
                     `((+emacs-lisp-highlight-vars-and-faces . +emacs-lisp--face))))))
@@ -234,17 +238,15 @@ Use `+emacs-lisp/change-working-buffer' to change this. Only applies to
   ;;   expensive functionality, this will often introduce unexpected freezes
   ;;   without this advice.
   ;; TODO: PR upstream?
-  (defvar org-inhibit-startup)
-  (defvar org-mode-hook)
   (defadvice! +emacs-lisp--optimize-org-init-a (fn &rest args)
     "Disable unrelated functionality to optimize calls to `org-mode'."
     :around #'elisp-demos--export-json-file
     :around #'elisp-demos--symbols
     :around #'elisp-demos--syntax-highlight
-    (let ((org-inhibit-startup t)
-          (doom-inhibit-local-var-hooks t)
-          enable-dir-local-variables
-          org-mode-hook)
+    (dlet ((org-inhibit-startup t)
+           (doom-inhibit-local-var-hooks t)
+           enable-dir-local-variables
+           org-mode-hook)
       (apply fn args))))
 
 
@@ -312,12 +314,11 @@ Addresses an unwanted side-effect in `find-function-search-for-symbol' on Emacs
 current buffer."
       :around #'find-function-search-for-symbol
       (let (buf pos)
-        (letf! (defun find-library-name (library)
-                 (let ((filename (funcall find-library-name library)))
-                   (with-current-buffer (find-file-noselect filename)
-                     (setq buf (current-buffer)
-                           pos (point)))
-                   filename))
+        (letf! (defadvice find-library-name (:filter-return (filename))
+                 (with-current-buffer (find-file-noselect filename)
+                   (setq buf (current-buffer)
+                         pos (point)))
+                 filename)
           (prog1 (apply fn args)
             (when (buffer-live-p buf)
               (with-current-buffer buf (goto-char pos))))))))
@@ -335,6 +336,16 @@ current buffer."
         ((modulep! :completion helm)
          (dolist (fn '(helm-describe-variable helm-describe-function))
            (advice-add fn :around #'doom-use-helpful-a))))
+
+  ;; HACK: If `info-lookup' or `info-lookup-make-completions' fails to locate
+  ;;   manuals (e.g. bad entries in $INFOPATH), it will freeze Emacs for about a
+  ;;   second or longer to display an error (with `sit-for'). Helpful may call
+  ;;   one or the other on first invocation. This is abysmal UX, so I suppress
+  ;;   the delay.
+  (defadvice! +emacs-lisp--helpful-suppress-sit-for-a (fn &rest args)
+    :around #'helpful--in-manual-p
+    :around #'helpful--manual
+    (letf! ((#'sit-for #'ignore)) (apply fn args)))
 
   ;; Open help:* links with helpful-* instead of describe-*
   (advice-add #'org-link--open-help :around #'doom-use-helpful-a)
