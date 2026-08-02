@@ -225,9 +225,9 @@ Is relative to `org-directory', unless it is absolute. Is used in Doom's default
 
   (defadvice! +org--exclude-expand-noweb-references-a (fn &rest args)
     :around #'ob-async-org-babel-execute-src-block
-    (let ((async-inject-variables-exclude-regexps
-           (cons "\\`org-babel-expand-noweb-references--cache-buffer\\'"
-                 async-inject-variables-exclude-regexps)))
+    (dlet ((async-inject-variables-exclude-regexps
+            (cons "\\`org-babel-expand-noweb-references--cache-buffer\\'"
+                  async-inject-variables-exclude-regexps)))
       (apply fn args)))
 
   (defadvice! +org-babel-disable-async-maybe-a (fn &optional orig-fn arg info params)
@@ -278,7 +278,7 @@ Also adds support for a `:sync' parameter to override `:async'."
                ;; Since Doom adds its most expensive hooks to
                ;; MAJOR-MODE-local-vars-hook, we can savely inhibit those.
                (lambda ()
-                 (let ((doom-inhibit-local-var-hooks t))
+                 (dlet ((doom-inhibit-local-var-hooks t))
                    (funcall initialize)))
              initialize)
            args))
@@ -406,8 +406,8 @@ I like:
   (after! org-capture
     (org-capture-put :kill-buffer t))
 
-  ;; Fix #462: when refiling from org-capture, Emacs prompts to kill the
-  ;; underlying, modified buffer. This fixes that.
+  ;; Fix doomemacs/core#462: when refiling from org-capture, Emacs prompts to
+  ;; kill the underlying, modified buffer. This fixes that.
   (add-hook! 'org-after-refile-insert-hook
     (defun +org-save-buffer-after-capture-h ()
       (when (bound-and-true-p org-capture-is-refiling)
@@ -439,8 +439,8 @@ relative to `org-directory', unless it is an absolute path."
     :after #'org-capture-refile
     (+org-capture-cleanup-frame-h))
 
-  (when (modulep! :ui doom-dashboard)
-    (add-hook '+doom-dashboard-inhibit-functions #'+org-capture-frame-p)))
+  (when (modulep! :ui dashboard)
+    (add-hook '+dashboard-inhibit-functions #'+org-capture-frame-p)))
 
 
 (defun +org-init-attachments-h ()
@@ -487,119 +487,17 @@ relative to `org-directory', unless it is an absolute path."
                     '(warning org-link))))
 
   ;; Additional custom links for convenience
-  (dolist (abbrev `(("github"      . "https://github.com/%s")
-                    ("youtube"     . "https://youtube.com/watch?v=%s")
-                    ("google"      . "https://google.com/search?q=")
-                    ("gimages"     . "https://google.com/images?q=%s")
-                    ("gmap"        . "https://maps.google.com/maps?q=%s")
-                    ("kagi"        . "https://kagi.com/search?q=%s")
-                    ("duckduckgo"  . "https://duckduckgo.com/?q=%s")
-                    ("wikipedia"   . "https://en.wikipedia.org/wiki/%s")
-                    ("wolfram"     . "https://wolframalpha.com/input/?i=%s")
-                    ("doom-repo"   . "https://github.com/doomemacs/core/%s")
-                    ("emacsdir"    . ,(doom-path doom-emacs-dir "%s"))
-                    ("doomdir"     . ,(doom-path doom-user-dir "%s"))))
+  (dolist (abbrev `(("org"        . ,(lambda (path) (abbreviate-file-name (expand-file-name path org-directory))))
+                    ("github"     . "https://github.com/%s")
+                    ("youtube"    . "https://youtube.com/watch?v=%s")
+                    ("google"     . "https://google.com/search?q=")
+                    ("gimages"    . "https://google.com/images?q=%s")
+                    ("gmap"       . "https://maps.google.com/maps?q=%s")
+                    ("kagi"       . "https://kagi.com/search?q=%s")
+                    ("duckduckgo" . "https://duckduckgo.com/?q=%s")
+                    ("wikipedia"  . "https://en.wikipedia.org/wiki/%s")
+                    ("wolfram"    . "https://wolframalpha.com/input/?i=%s")))
     (add-to-list 'org-link-abbrev-alist abbrev))
-
-  (+org-define-basic-link "org" 'org-directory)
-  (+org-define-basic-link "doom" 'doom-emacs-dir)
-  (+org-define-basic-link "doom-docs" 'doom-docs-dir)
-  ;; FIXME: (+org-define-basic-link "doom-modules" 'doom-modules-dir)
-
-  ;; Add "lookup" links for packages and keystrings; useful for Emacs
-  ;; documentation -- especially Doom's!
-  (letf! (defun -call-interactively (fn)
-           (lambda (path _prefixarg)
-             (funcall (or (command-remapping fn) fn)
-                      (or (intern-soft path)
-                          (user-error "Can't find documentation for %S" path)))))
-    (org-link-set-parameters
-     "kbd"
-     :follow (lambda (ev)
-               (interactive "e")
-               (minibuffer-message "%s" (+org-link-doom--help-echo-from-textprop
-                                         nil (current-buffer) (posn-point (event-start ev)))))
-     :help-echo #'+org-link-doom--help-echo-from-textprop
-     :face 'help-key-binding)
-    (org-link-set-parameters
-     "var"
-     :follow (-call-interactively #'describe-variable)
-     :activate-func #'+org-link--var-link-activate-fn
-     :face '(font-lock-variable-name-face underline))
-    (org-link-set-parameters
-     "fn"
-     :follow (-call-interactively #'describe-function)
-     :activate-func #'+org-link--fn-link-activate-fn
-     :face '(font-lock-function-name-face underline))
-    (org-link-set-parameters
-     "face"
-     :follow (-call-interactively #'describe-face)
-     :activate-func #'+org-link--face-link-activate-fn
-     :face '(font-lock-type-face underline))
-    (org-link-set-parameters
-     "cmd"
-     :follow (-call-interactively #'describe-command)
-     :activate-func #'+org-link--command-link-activate-fn
-     :face 'help-key-binding
-     :help-echo #'+org-link-doom--help-echo-from-textprop)
-    (org-link-set-parameters
-     "doom-package"
-     :follow #'+org-link--doom-package-link-follow-fn
-     :activate-func #'+org-link--doom-package-link-activate-fn
-     :help-echo #'+org-link-doom--help-echo-from-textprop)
-    (org-link-set-parameters
-     "doom-module"
-     :follow #'+org-link--doom-module-link-follow-fn
-     :activate-func #'+org-link--doom-module-link-activate-fn
-     :help-echo #'+org-link-doom--help-echo-from-textprop)
-    (org-link-set-parameters
-     "doom-executable"
-     :activate-func #'+org-link--doom-executable-link-activate-fn
-     :help-echo #'+org-link-doom--help-echo-from-textprop
-     :face 'org-verbatim)
-    (org-link-set-parameters
-     "doom-ref"
-     :follow (lambda (link)
-               (let ((link (+org-link-read-desc-at-point link))
-                     (url "https://github.com")
-                     (doom-repo "doomemacs/core"))
-                 (save-match-data
-                   (browse-url
-                    (cond ((string-match "^\\([^/]+\\(?:/[^/]+\\)?\\)?#\\([0-9]+\\(?:#.*\\)?\\)" link)
-                           (format "%s/%s/issues/%s" url
-                                   (or (match-string 1 link)
-                                       doom-repo)
-                                   (match-string 2 link)))
-                          ((string-match "^\\([^/]+\\(?:/[^/]+\\)?@\\)?\\([a-z0-9]\\{7,\\}\\(?:#.*\\)?\\)" link)
-                           (format "%s/%s/commit/%s" url
-                                   (or (match-string 1 link)
-                                       doom-repo)
-                                   (match-string 2 link)))
-                          ((user-error "Invalid doom-ref link: %S" link)))))))
-     :face (lambda (link)
-             (let ((link (+org-link-read-desc-at-point link)))
-               (if (or (string-match "^\\([^/]+\\(?:/[^/]+\\)?\\)?#\\([0-9]+\\(?:#.*\\)?\\)" link)
-                       (string-match "^\\([^/]+\\(?:/[^/]+\\)?@\\)?\\([a-z0-9]\\{7,\\}\\(?:#.*\\)?\\)" link))
-                   'org-link
-                 'error))))
-    (org-link-set-parameters
-     "doom-user"
-     :follow (lambda (link)
-               (browse-url
-                (format "https://github.com/%s"
-                        (string-remove-prefix
-                         "@" (+org-link-read-desc-at-point link)))))
-     :face (lambda (_)
-             ;; Avoid confusion with function `org-priority'
-             'org-priority))
-    (org-link-set-parameters
-     "doom-changelog"
-     :follow (lambda (link)
-               (find-file (doom-path doom-docs-dir "changelog.org"))
-               (org-match-sparse-tree nil link))))
-
-  ;; Add "lookup" links for packages and keystrings; useful for Emacs
-  ;; documentation -- especially Doom's!
 
   ;; Allow inline image previews of http(s)? urls or data uris.
   ;; `+org-link-preview-image-url-fn' will respect
@@ -634,7 +532,7 @@ relative to `org-directory', unless it is an absolute path."
     "Exporting and tangling trigger save hooks; inadvertantly triggering
 mutating hooks on exported output, like formatters."
     :around '(org-export-to-file org-babel-tangle)
-    (let (before-save-hook after-save-hook)
+    (dlet (before-save-hook after-save-hook)
       (apply fn args)))
 
   (defadvice! +org--fix-async-export-a (fn &rest args)
@@ -685,10 +583,10 @@ mutating hooks on exported output, like formatters."
   (defadvice! +org--strip-properties-from-outline-a (fn &rest args)
     "Fix variable height faces in eldoc breadcrumbs."
     :around #'org-format-outline-path
-    (let ((org-level-faces
-           (cl-loop for face in org-level-faces
-                    collect `(:foreground ,(face-foreground face nil t)
-                              :weight bold))))
+    (dlet ((org-level-faces
+            (cl-loop for face in org-level-faces
+                     collect `(:foreground ,(face-foreground face nil t)
+                               :weight bold))))
       (apply fn args)))
 
   (defun +org--restart-mode-h ()
@@ -704,7 +602,7 @@ mutating hooks on exported output, like formatters."
       (when (and org-agenda-new-buffers
                  (bound-and-true-p persp-mode)
                  (not org-agenda-sticky))
-        (let (persp-autokill-buffer-on-remove)
+        (dlet (persp-autokill-buffer-on-remove)
           (persp-remove-buffer org-agenda-new-buffers
                                (get-current-persp)
                                nil)))))
@@ -1045,22 +943,25 @@ between the two."
 
 
 (use-package! org-eldoc
-  ;; HACK: Fix #7633: this hook is no longer autoloaded by org-eldoc (in
-  ;;   org-contrib), so we have to add it ourselves.
+  ;; HACK: Fix doomemacs/core#7633: this hook is no longer autoloaded by
+  ;;   org-eldoc (in org-contrib), so we have to add it ourselves.
   :hook (org-mode . org-eldoc-load)
   :init (setq org-eldoc-breadcrumb-separator " → ")
   :config
-  (defadvice! +org-eldoc--display-link-at-point-a (&rest _)
-    "Display help for doom-*: links in minibuffer when cursor/mouse is over it."
-    :before-until #'org-eldoc-documentation-function
-    (if-let* ((url (thing-at-point 'url t)))
-        (format "LINK: %s" url)
-      (and (eq (get-text-property (point) 'help-echo)
-               #'+org-link-doom--help-echo-from-textprop)
-           (+org-link-doom--help-echo-from-textprop nil (current-buffer) (point)))))
+  (defadvice! +org-eldoc--display-link-at-point-a (fn &rest args)
+    "Display help-echo if eldoc serves up no other output on mouse-over."
+    :around #'org-eldoc-documentation-function
+    (or (when-let* ((help-echo (get-text-property (point) 'help-echo)))
+          (cond ((functionp help-echo)
+                 (funcall help-echo (selected-window) (current-buffer) (point)))
+                ((stringp help-echo)
+                 help-echo)))
+        (apply fn args)
+        (when-let* ((url (thing-at-point 'url t)))
+          (format "LINK: %s" url))))
 
-  ;; HACK: Fix #2972: infinite recursion when eldoc kicks in 'org' or 'python'
-  ;;   src blocks.
+  ;; HACK: Fix doomemacs/core#2972: infinite recursion when eldoc kicks in 'org'
+  ;;   or 'python' src blocks.
   ;; REVIEW: Should be reported upstream!
   (puthash "org" #'ignore org-eldoc-local-functions-cache)
   (puthash "plantuml" #'ignore org-eldoc-local-functions-cache)
