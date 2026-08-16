@@ -1,3 +1,4 @@
+# -*- doom-docs -*-
 #+title:    :tools collab
 #+subtitle: Buffers with friends
 #+created:  September 2, 2022
@@ -16,14 +17,10 @@ This module adds collaborative editing via the [[https://code.librehq.com/qhong/
   session can be established between machines that are behind a NAT.
 
 ** Packages
-- [[doom-package:crdt]]
+- [[package:crdt]]
 
 ** Hacks
 /No hacks documented for this module./
-
-** TODO Changelog
-# This section will be machine generated. Don't edit it by hand.
-/This module does not have a changelog yet./
 
 * Installation
 [[id:01cffea4-3329-45e2-a892-95a384ab2338][Enable this module in your ~doom!~ block.]]
@@ -95,8 +92,8 @@ When this module is enabled, the `SPC l` leader keymap becomes available, making
 | =SPC l [= | Goto previous user's cursor                             |
 
 * Configuration
-#+begin_quote
- 󱌣 /This module's configuration documentation is incomplete./ [[doom-contrib-module:][Complete it?]]
+#+begin_quote wip
+/This module's configuration documentation is incomplete./ [[doom-contrib-module:][Complete it?]]
 #+end_quote
 
 This list is not exhaustive; for the full list of config options, type =SPC h V
@@ -133,9 +130,4 @@ occur if everyone is up to date, so ensure that all collaborators have upgraded
 Doom Emacs to the latest version and have not pinned =crdt=.
 
 * Frequently asked questions
-/This module has no FAQs yet./ [[doom-suggest-faq:][Ask one?]]
-
-* TODO Appendix
-#+begin_quote
- 󱌣 This module has no appendix yet. [[doom-contrib-module:][Write one?]]
-#+end_quote
+/This module has no FAQs yet./ [[doom-contrib-faq:][Ask one?]]

@@ -487,8 +487,7 @@ relative to `org-directory', unless it is an absolute path."
                     '(warning org-link))))
 
   ;; Additional custom links for convenience
-  (dolist (abbrev `(("org"        . ,(lambda (path) (abbreviate-file-name (expand-file-name path org-directory))))
-                    ("github"     . "https://github.com/%s")
+  (dolist (abbrev '(("github"     . "https://github.com/%s")
                     ("youtube"    . "https://youtube.com/watch?v=%s")
                     ("google"     . "https://google.com/search?q=")
                     ("gimages"    . "https://google.com/images?q=%s")
@@ -498,6 +497,11 @@ relative to `org-directory', unless it is an absolute path."
                     ("wikipedia"  . "https://en.wikipedia.org/wiki/%s")
                     ("wolfram"    . "https://wolframalpha.com/input/?i=%s")))
     (add-to-list 'org-link-abbrev-alist abbrev))
+
+  (defun +org-dir (tag)
+    "Build an (abbreviated) path to TAG under `org-directory.'"
+    (abbreviate-file-name (expand-file-name tag org-directory)))
+  (add-to-list 'org-link-abbrev-alist '("org" . +org-dir))
 
   ;; Allow inline image previews of http(s)? urls or data uris.
   ;; `+org-link-preview-image-url-fn' will respect
@@ -957,8 +961,9 @@ between the two."
                 ((stringp help-echo)
                  help-echo)))
         (apply fn args)
-        (when-let* ((url (thing-at-point 'url t)))
-          (format "LINK: %s" url))))
+        (when-let* (((bound-and-true-p org-link-descriptive))
+                    (url (org-element-property :raw-link (org-element-context))))
+          (format "%s %s" (propertize "Link:" 'face 'bold) url))))
 
   ;; HACK: Fix doomemacs/core#2972: infinite recursion when eldoc kicks in 'org'
   ;;   or 'python' src blocks.
@@ -1196,7 +1201,7 @@ between the two."
     :references #'+org-lookup-references-handler
     :documentation #'+org-lookup-documentation-handler)
 
-  (add-hook! 'org-mode-hook
+  (add-hook! 'org-mode-local-vars-hook
     ;; HACK: `save-place' can position the cursor in an invisible region. This
     ;;   makes it visible unless `org-inhibit-startup' or
     ;;   `org-inhibit-startup-visibility-stuff' is non-nil.
