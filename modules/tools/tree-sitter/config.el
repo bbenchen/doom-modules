@@ -305,7 +305,7 @@
                       :source-dir "tsx/src")
                  (qmljs :url "https://github.com/yuja/tree-sitter-qmljs")
                  (yaml :url "https://github.com/tree-sitter-grammars/tree-sitter-yaml"
-                       :rev ,(if (< (treesit-library-abi-version) 15) "v0.7.2" "v0.7.0"))
+                       :rev ,(if (< (treesit-library-abi-version) 15) "v0.7.0" "v0.7.2"))
                  (zig :url "https://github.com/tree-sitter-grammars/tree-sitter-zig")))
     (cl-pushnew (apply #'+tree-sitter-source map)
                 treesit-language-source-alist
