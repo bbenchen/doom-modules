@@ -225,7 +225,8 @@
       "o" nil ; we need to unbind it first as Org claims this prefix
       (:prefix-map ("o" . "open")
        :desc "Browser"            "b"  #'browse-url-of-file
-       :desc "Debugger"           "d"  #'+debugger/start
+       (:when (modulep! :tools debugger)
+         :desc "Debugger"           "d"  #'+debugger/start)
        :desc "New frame"          "f"  #'make-frame
        (:when (modulep! :tools eval)
          :desc "REPL"               "r"  #'+eval/open-repl-other-window
