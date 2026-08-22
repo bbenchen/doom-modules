@@ -2,7 +2,7 @@
 
 ;;;###autoload (add-hook 'org-mode-hook #'+literate-enable-recompile-h)
 
-(defvar +literate-config-file (file-name-concat doom-user-dir "config.org")
+(defvar +literate-config-file (doom-user-dir "config.org")
   "The file path of your literate config file.")
 
 (defvar +literate-tangle--async-proc nil)
@@ -91,7 +91,7 @@
     (run-at-time nil nil (lambda () (message "Tangling config.org"))) ; ensure shown after a save message
     "Tangling config.org..."))
 
-(defun +literate-tangle--async-sentinel (process signal)
+(defun +literate-tangle--async-sentinel (process _signal)
   (cond
    ((and (eq 'exit (process-status process))
          (= 0 (process-exit-status process)))
@@ -178,7 +178,8 @@ This is performed with an asyncronous Emacs process, except when
 
 We assume any org file in `doom-user-dir' is connected to your literate config,
 and should trigger a recompile if changed."
-  (and (file-in-directory-p
+  (and buffer-file-name
+       (file-in-directory-p
         (buffer-file-name (buffer-base-buffer))
         (file-name-directory (file-truename +literate-config-file)))
        (+literate-tangle-h)))

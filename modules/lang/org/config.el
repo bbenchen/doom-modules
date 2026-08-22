@@ -67,9 +67,6 @@ Is relative to `org-directory', unless it is absolute. Is used in Doom's default
 (defvar +org-preview-dir (doom-profile-cache-dir t "org/previews/")
   "Where link preview images are cached.")
 
-(defvar +org-startup-with-animated-gifs nil
-  "If non-nil, and the cursor is over a gif inline-image preview, animate it!")
-
 
 ;;
 ;;; `org-load' hooks
@@ -300,6 +297,7 @@ Also adds support for a `:sync' parameter to override `:async'."
             (org-display-inline-images nil nil (min beg end) (max beg end))))))))
 
 
+;; REVIEW: PR this upstream!
 (defun +org-init-babel-lazy-loader-h ()
   "Load babel libraries lazily when babel blocks are executed."
   (defun +org--babel-lazy-load (lang &optional async)
@@ -321,9 +319,10 @@ Also adds support for a `:sync' parameter to override `:async'."
 
   (defadvice! +org--src-lazy-load-library-a (lang)
     "Lazy load a babel package to ensure syntax highlighting."
-    :before #'org-src--get-lang-mode
-    (or (cdr (assoc lang org-src-lang-modes))
-        (+org--babel-lazy-load lang)))
+    :before #'org-src-get-lang-mode
+    (when lang
+      (or (cdr (assoc lang org-src-lang-modes))
+          (+org--babel-lazy-load (intern lang)))))
 
   ;; This also works for tangling
   (defadvice! +org--babel-lazy-load-library-a (info)
@@ -413,6 +412,7 @@ I like:
       (when (bound-and-true-p org-capture-is-refiling)
         (save-buffer))))
 
+  ;; REVIEW: PR this upstream!
   (defadvice! +org--capture-expand-variable-file-a (file)
     "If a variable is used for a file path in `org-capture-template', it is used
 as is, and expanded relative to `default-directory'. This changes it to be
@@ -487,9 +487,9 @@ relative to `org-directory', unless it is an absolute path."
                     '(warning org-link))))
 
   ;; Additional custom links for convenience
-  (dolist (abbrev '(("github"     . "https://github.com/%s")
+  (dolist (abbrev '(("github"     . "https://github.com/")
                     ("youtube"    . "https://youtube.com/watch?v=%s")
-                    ("google"     . "https://google.com/search?q=")
+                    ("google"     . "https://google.com/search?q=%s")
                     ("gimages"    . "https://google.com/images?q=%s")
                     ("gmap"       . "https://maps.google.com/maps?q=%s")
                     ("kagi"       . "https://kagi.com/search?q=%s")
@@ -499,7 +499,7 @@ relative to `org-directory', unless it is an absolute path."
     (add-to-list 'org-link-abbrev-alist abbrev))
 
   (defun +org-dir (tag)
-    "Build an (abbreviated) path to TAG under `org-directory.'"
+    "Build an (abbreviated) path to TAG under `org-directory'."
     (abbreviate-file-name (expand-file-name tag org-directory)))
   (add-to-list 'org-link-abbrev-alist '("org" . +org-dir))
 
@@ -532,15 +532,17 @@ relative to `org-directory', unless it is an absolute path."
             (mathjax . t)
             (variable . "revealjs-url=https://revealjs.com"))))
 
+  ;; REVIEW: PR this upstream.
   (defadvice! +org--dont-trigger-save-hooks-a (fn &rest args)
     "Exporting and tangling trigger save hooks; inadvertantly triggering
 mutating hooks on exported output, like formatters."
-    :around '(org-export-to-file org-babel-tangle)
-    (dlet (before-save-hook after-save-hook)
-      (apply fn args)))
+    :around #'org-export-to-file
+    :around #'org-babel-tangle
+    (dlet (write-file-functions) (apply fn args)))
 
   (defadvice! +org--fix-async-export-a (fn &rest args)
-    :around '(org-export-to-file org-export-as)
+    :around #'org-export-to-file
+    :around #'org-export-as
     (let ((old-async-init-file org-export-async-init-file)
           (org-export-async-init-file (make-temp-file "doom-org-async-export")))
       (doom-file-write
@@ -584,9 +586,10 @@ mutating hooks on exported output, like formatters."
   (add-to-list 'org-file-apps '(directory . emacs))
   (add-to-list 'org-file-apps '(remote . emacs))
 
-  (defadvice! +org--strip-properties-from-outline-a (fn &rest args)
+  ;; REVIEW: PR this upstream!
+  (defadvice! +org--strip-properties-from-eldoc-breadcrumbs-a (fn &rest args)
     "Fix variable height faces in eldoc breadcrumbs."
-    :around #'org-format-outline-path
+    :around #'org-eldoc-get-breadcrumb
     (dlet ((org-level-faces
             (cl-loop for face in org-level-faces
                      collect `(:foreground ,(face-foreground face nil t)
@@ -630,21 +633,21 @@ these buffers they'll see a gimped, half-broken org buffer, so to avoid that,
 install a hook to restart `org-mode' when they're switched to so they can grow
 up to be fully-fledged org-mode buffers."
     :around #'org-get-agenda-file-buffer
-    (if-let* ((buf (org-find-base-buffer-visiting file)))
-        buf
-      (dlet ((recentf-exclude '(always))
-             (doom-inhibit-local-var-hooks t)
-             (org-inhibit-startup t)
-             so-long-target-modes
-             vc-handled-backends
-             enable-local-variables
-             find-file-hook)
-        (when-let* ((buf (delay-mode-hooks (funcall fn file))))
-          (with-current-buffer buf
-            (add-hook 'doom-switch-buffer-hook #'+org--restart-mode-h
-                      nil 'local))
-          buf))))
+    (or (org-find-base-buffer-visiting file)
+        (dlet ((recentf-exclude '(always))
+               (doom-inhibit-local-var-hooks t)
+               (org-inhibit-startup t)
+               so-long-target-modes
+               vc-handled-backends
+               enable-local-variables
+               find-file-hook)
+          (when-let* ((buf (delay-mode-hooks (funcall fn file))))
+            (with-current-buffer buf
+              (add-hook 'doom-switch-buffer-hook #'+org--restart-mode-h
+                        nil 'local))
+            buf))))
 
+  ;; REVIEW: PR this upstream!
   (defadvice! +org--fix-inconsistent-uuidgen-case-a (uuid)
     "Ensure uuidgen is always lowercase (consistent) regardless of system.
 See https://lists.gnu.org/archive/html/emacs-orgmode/2019-07/msg00081.html."
@@ -1228,17 +1231,4 @@ between the two."
   (add-hook 'org-open-at-point-functions #'doom-set-jump-h)
   ;; HACK: For functions that dodge `org-open-at-point-functions', like
   ;;   `org-id-open', `org-goto', or roam: links.
-  (advice-add #'org-mark-ring-push :around #'doom-set-jump-a)
-
-  ;; Add the ability to play gifs, at point or throughout the buffer. However,
-  ;; 'playgifs' is stupid slow and there's not much I can do to fix it; use at
-  ;; your own risk.
-  (add-to-list 'org-startup-options '("inlinegifs" +org-startup-with-animated-gifs at-point))
-  (add-to-list 'org-startup-options '("playgifs"   +org-startup-with-animated-gifs t))
-  (add-hook! 'org-mode-local-vars-hook
-    (defun +org-init-gifs-h ()
-      (remove-hook 'post-command-hook #'+org-play-gif-at-point-h t)
-      (remove-hook 'post-command-hook #'+org-play-all-gifs-h t)
-      (pcase +org-startup-with-animated-gifs
-        (`at-point (add-hook 'post-command-hook #'+org-play-gif-at-point-h nil t))
-        (`t (add-hook 'post-command-hook #'+org-play-all-gifs-h nil t))))))
+  (advice-add #'org-mark-ring-push :around #'doom-set-jump-a))

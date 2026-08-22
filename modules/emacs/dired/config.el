@@ -71,7 +71,7 @@ Fixes doomemacs/core#3939: unsortable dired entries on Windows."
 
 (use-package! dirvish
   :init
-  (setq dirvish-cache-dir (file-name-concat doom-cache-dir "dirvish/"))
+  (setq dirvish-cache-dir (doom-cache-dir "dirvish/"))
   (dirvish-override-dired-mode)
   :config
   (set-popup-rule! "^ ?\\*\\(?:[Dd]irvish\\|SIDE :: \\).*" :ignore t)
