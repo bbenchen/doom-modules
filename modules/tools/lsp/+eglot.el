@@ -4,8 +4,9 @@
   :commands eglot eglot-ensure
   :hook (eglot-managed-mode . +lsp-optimization-mode)
   :init
-  (setq eglot-sync-connect 1
+  (setq eglot-sync-connect 0
         eglot-autoshutdown t
+        eglot-max-file-watches 5000  ; default is 10000
         ;; NOTE: We disable eglot-auto-display-help-buffer because :select t in
         ;;   its popup rule causes eglot to steal focus too often.
         eglot-auto-display-help-buffer nil

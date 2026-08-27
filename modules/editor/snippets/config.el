@@ -60,12 +60,18 @@
   ;; HACK: Suppress prompting when snippets are expended for completion or
   ;;   documentation popups (from corfu, company, etc).
   ;; REVIEW: Handle this upstream.
-  (defadvice! +corfu--suppress-prompts-during-completion-a (fn &rest args)
+  (defadvice! +snippets--suppress-prompts-during-completion-a (fn &rest args)
     :around #'yasnippet-capf--doc-buffer
     :around #'company-yasnippet--doc
     (dlet ((yas-prompt-functions '(yas-no-prompt))
            (non-essential t))
       (apply fn args)))
+
+  ;; HACK: Loudly complains about non-existant directories in
+  ;;   `yas-snippet-dirs', but some of those directories could legitimately not
+  ;;   exist (like $DOOMDIR/snippets), so leave those warnings out of the Echo
+  ;;   Area, at least (still logged to *Messages* though).
+  (advice-add #'yas--load-snippet-dirs :around #'doom-shut-up-a)
 
   (after! smartparens
     ;; tell smartparens overlays not to interfere with yasnippet keybinds
@@ -95,13 +101,6 @@
         (:map snippet-mode-map
          "C-c C-e" #'+snippet--edit
          "C-c C-k" #'+snippet--abort))
-
-  ;; REVIEW: Fix doomemacs/core#2639: For some reason `yas--all-templates'
-  ;;   returns duplicates of some templates. Until I figure out the real cause
-  ;;   this fixes it.
-  (defadvice! +snippets--remove-duplicates-a (templates)
-    :filter-return #'yas--all-templates
-    (cl-delete-duplicates templates :test #'equal))
 
   ;; HACK: Smartparens will interfere with snippets expanded by `hippie-expand`,
   ;;   so temporarily disable smartparens during snippet expansion.
