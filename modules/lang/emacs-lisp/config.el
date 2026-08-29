@@ -49,7 +49,7 @@ Use `+emacs-lisp/change-working-buffer' to change this. Only applies to
   (let ((modes '(emacs-lisp-mode lisp-interaction-mode lisp-data-mode)))
     (set-repl-handler! modes #'+emacs-lisp/open-repl)
     (set-eval-handler! modes #'+emacs-lisp-eval-fn)
-    (set-lookup-handlers! `(,@modes helpful-mode)
+    (set-lookup-handlers! `(,@modes help-mode helpful-mode)
       :definition    #'+emacs-lisp-lookup-definition
       :documentation #'+emacs-lisp-lookup-documentation)
     (set-docsets! modes "Emacs Lisp")
@@ -218,38 +218,6 @@ Use `+emacs-lisp/change-working-buffer' to change this. Only applies to
   :config (package-lint-flymake-setup))
 
 
-(use-package! elisp-demos
-  :defer t
-  :init
-  (advice-add #'describe-function-1 :after #'elisp-demos-advice-describe-function-1)
-  (advice-add #'helpful-update :after #'elisp-demos-advice-helpful-update)
-  :config
-  ;; Add Doom's core and module demo files, so additional demos can be specified
-  ;; by end-users (in $DOOMDIR/demos.org), by modules (modules/X/Y/demos.org),
-  ;; or Doom's core (lisp/demos.org).
-  (dolist (file (doom-module-locate-paths (remove '(:user) (doom-module-list)) "demos.org"))
-    (add-to-list 'elisp-demos-user-files file))
-  ;; The user's demos.org should be first in the list so that
-  ;; `elisp-demos-add-demo' will add new ones to that instead of some module's.
-  (add-to-list 'elisp-demos-user-files (expand-file-name "demos.org" doom-user-dir))
-
-  ;; HACK: These functions open Org files non-interactively without any
-  ;;   performance optimizations. Given how prone org-mode is to being tied to
-  ;;   expensive functionality, this will often introduce unexpected freezes
-  ;;   without this advice.
-  ;; TODO: PR upstream?
-  (defadvice! +emacs-lisp--optimize-org-init-a (fn &rest args)
-    "Disable unrelated functionality to optimize calls to `org-mode'."
-    :around #'elisp-demos--export-json-file
-    :around #'elisp-demos--symbols
-    :around #'elisp-demos--syntax-highlight
-    (dlet ((org-inhibit-startup t)
-           (doom-inhibit-local-var-hooks t)
-           enable-dir-local-variables
-           org-mode-hook)
-      (apply fn args))))
-
-
 (use-package! buttercup
   :defer t
   :minor ("/test[/-].+\\.el$" . buttercup-minor-mode)
@@ -274,7 +242,6 @@ Use `+emacs-lisp/change-working-buffer' to change this. Only applies to
 (use-package! helpful
   ;; a better *help* buffer
   :commands helpful--read-symbol
-  :hook (helpful-mode . visual-line-mode)
   :init
   ;; Make `apropos' et co search more extensively. They're more useful this way.
   (setq apropos-do-all t)
@@ -285,28 +252,18 @@ Use `+emacs-lisp/change-working-buffer' to change this. Only applies to
   (global-set-key [remap describe-key]      #'helpful-key)
   ;; (global-set-key [remap describe-symbol]   #'helpful-symbol)
 
-  (defun doom-use-helpful-a (fn &rest args)
-    "Force FN to use helpful instead of the old describe-* commands."
-    (letf! ((#'describe-function #'helpful-function)
-            (#'describe-variable #'helpful-variable))
-      (apply fn args)))
-
+  ;; HACK: Patch apropos buttons to call helpful instead of help
   (after! apropos
-    ;; patch apropos buttons to call helpful instead of help
     (dolist (fun-bt '(apropos-function apropos-macro apropos-command))
       (button-type-put
-       fun-bt 'action
-       (lambda (button)
-         (helpful-callable (button-get button 'apropos-symbol)))))
+       fun-bt 'action (fn! (helpful-callable (button-get % 'apropos-symbol)))))
     (dolist (var-bt '(apropos-variable apropos-user-option))
       (button-type-put
-       var-bt 'action
-       (lambda (button)
-         (helpful-variable (button-get button 'apropos-symbol))))))
+       var-bt 'action (fn! (helpful-variable (button-get % 'apropos-symbol))))))
 
   ;; DEPRECATED: Remove when support for 29 is dropped.
   (when (= emacs-major-version 29)
-    (defadvice! doom--find-function-search-for-symbol-save-excursion-a (fn &rest args)
+    (defadvice! +emacs-lisp--find-function-search-for-symbol-save-excursion-a (fn &rest args)
       "Suppress cursor movement by `find-function-search-for-symbol'.
 
 Addresses an unwanted side-effect in `find-function-search-for-symbol' on Emacs
@@ -323,32 +280,30 @@ current buffer."
             (when (buffer-live-p buf)
               (with-current-buffer buf (goto-char pos))))))))
   :config
-  (setq-hook! 'helpful-mode-hook
-    ;; Elisp code using tab indentation always use a tab-width of 8. C source
-    ;; code from Emacs also use a tab-width of 8. Therefore Helpful needs a
-    ;; tab-width of 8 to display tab indentation correctly.
-    tab-width 8)
+  ;; Add Doom's core and module demo files, so additional demos can be specified
+  ;; by end-users (in $DOOMDIR/demos.org), by modules (modules/X/Y/demos.org),
+  ;; or Doom's core (lisp/demos.org).
+  (dolist (file (doom-module-locate-paths (remove '(:user) (doom-module-list)) "demos.org"))
+    (add-to-list 'helpful-demos-files file))
+  ;; The user's demos.org should be first in the list so that
+  ;; `elisp-demos-add-demo' will add new ones to that instead of some module's.
+  (add-to-list 'helpful-demos-files (expand-file-name "demos.org" doom-user-dir))
 
   (cond ((modulep! :completion ivy)
          (setq counsel-describe-function-function #'helpful-callable
                counsel-describe-variable-function #'helpful-variable
                counsel-descbinds-function #'helpful-callable))
         ((modulep! :completion helm)
-         (dolist (fn '(helm-describe-variable helm-describe-function))
-           (advice-add fn :around #'doom-use-helpful-a))))
+         (setq helm-describe-function-function #'helpful-function
+               helm-describe-variable-function #'helpful-variable)))
 
-  ;; HACK: If `info-lookup' or `info-lookup-make-completions' fails to locate
-  ;;   manuals (e.g. bad entries in $INFOPATH), it will freeze Emacs for about a
-  ;;   second or longer to display an error (with `sit-for'). Helpful may call
-  ;;   one or the other on first invocation. This is abysmal UX, so I suppress
-  ;;   the delay.
-  (defadvice! +emacs-lisp--helpful-suppress-sit-for-a (fn &rest args)
-    :around #'helpful--in-manual-p
-    :around #'helpful--manual
-    (letf! ((#'sit-for #'ignore)) (apply fn args)))
-
-  ;; Open help:* links with helpful-* instead of describe-*
-  (advice-add #'org-link--open-help :around #'doom-use-helpful-a)
+  ;; HACK: Open help:* links with helpful-* instead of describe-*
+  ;; REVIEW: PR this upstream (use variables like other packages?)
+  (defadvice! +emacs-lisp--use-helpful-a (fn &rest args)
+    :around #'org-link--open-help
+    (letf! ((#'describe-function #'helpful-function)
+            (#'describe-variable #'helpful-variable))
+      (apply fn args)))
 
   ;; Keep a record of buffers so our next/previous commands work.
   (advice-add #'helpful--buffer :filter-return #'+emacs-lisp-record-new-buffers-a)
