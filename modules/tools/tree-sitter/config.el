@@ -83,6 +83,9 @@
                   python-ts-mode))  ; partially fixed in 31.1
     (advice-add mode :around #'+tree-sitter-ts-mode-inhibit-side-effects-a))
 
+  ;; So we can prevent double-prompting later.
+  (put 'treesit-auto-install-grammar 'permanent-local t)
+
   ;; HACK: Intercept all ts-mode major mode remappings so grammars can be
   ;;   dynamically checked and `treesit-auto-install-grammar' can be
   ;;   consistently respected (which isn't currently the case with the majority
@@ -137,7 +140,10 @@
                                                (y-or-n-p
                                                 (format "Missing tree-sitter grammars: %s\nInstall now?"
                                                         (mapconcat #'symbol-name grammars ", "))))))
-                                  (mapc #'treesit-install-language-grammar grammars)
+                                  (always
+                                   (cl-loop for grammar in grammars
+                                            do (treesit-install-language-grammar grammar)
+                                            finally do (setq-local treesit-auto-install-grammar t)))
                                 (message "Treesit grammars missing (%s), falling back to `%s'..."
                                          (mapconcat #'symbol-name grammars ", ")
                                          fallback-mode)
@@ -158,6 +164,7 @@
   ;;   active profile).
   (let ((data-dir (doom-profile-data-dir t "tree-sitter")))
     (add-to-list 'treesit-extra-load-path data-dir)
+    (make-directory data-dir t)
     ;; Treesit's API saw major changes in 30.x.
     (if (< emacs-major-version 30)
         (defadvice! +tree-sitter--install-grammar-to-local-dir-a (fn out-dir &rest args)
@@ -181,7 +188,12 @@
                  (awk :url "https://github.com/Beaglefoot/tree-sitter-awk")
                  (bibtex :url "https://github.com/latex-lsp/tree-sitter-bibtex")
                  (blueprint :url "https://github.com/huanie/tree-sitter-blueprint")
-                 (commonlisp :url "https://github.com/tree-sitter-grammars/tree-sitter-commonlisp")
+                 (cl-format :url "https://codeberg.org/zshaftel/tree-sitter-cl-syntax"
+                            :commit "dd2290d2a2480f4d865c57ed541dc714645c386b"
+                            :source-dir "grammars/format/src")
+                 (common-lisp :url "https://codeberg.org/zshaftel/tree-sitter-cl-syntax"
+                              :commit "dd2290d2a2480f4d865c57ed541dc714645c386b"
+                              :source-dir "grammars/cl/src")
                  (latex :url "https://github.com/latex-lsp/tree-sitter-latex"
                         :commit "a6c812704b3d3e1541b0853aa0d6d561301320e1") ; see latex-lsp/tree-sitter-latex#172
                  (make :url "https://github.com/tree-sitter-grammars/tree-sitter-make")
