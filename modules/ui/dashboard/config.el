@@ -169,7 +169,7 @@ dashboard reloading is inhibited.")
 ;;; Major mode
 
 (define-derived-mode +dashboard-mode special-mode
-  (format "DOOM v%s" doom-version)
+  (format "DOOM v%s" (doom-version))
   "Major mode for the DOOM dashboard buffer."
   :syntax-table nil
   :abbrev-table nil
@@ -567,7 +567,7 @@ Applies line-prefix and indent-prefix text properties to respect
       (unless (and (bolp) (eolp)) (insert "\n"))
 
       (when (> bot-pad 0)
-        (insert (propertize "\n" 'display `(space :height ,bot-pad)))))))
+        (insert (propertize " " 'display `(space :height ,bot-pad)) "\n")))))
 
 (defun +dashboard-widget-loaded ()
   "Draw number of modules and packages loaded, and the session's startup time."
@@ -628,7 +628,7 @@ See `+dashboard-menu-sections' to change the contents of the menu."
   "Draw project links."
   (+dashboard-insert
    (with-temp-buffer
-     (insert (propertize " " 'display '(space . (:relative-height 2.0))) "\n")
+     (insert "\n" (propertize " " 'display '(space . (:relative-height 2.0))))
      (insert-text-button
       (or (nerd-icons-codicon "nf-cod-octoface"
                               :face '+dashboard-footer-icon
