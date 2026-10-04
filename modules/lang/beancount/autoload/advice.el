@@ -29,9 +29,9 @@ will theirs, recursively)."
                 (when recursive?
                   (with-temp-buffer
                     (insert-file-contents file)
-                    (let ((default-directory
-                           (directory-file-name
-                            (file-name-directory file))))
+                    (dlet ((default-directory
+                            (directory-file-name
+                             (file-name-directory file))))
                       (cl-callf nconc files (+beancount--included-files 'nested context)))))))))
         (if nested?
             files
@@ -244,20 +244,24 @@ will theirs, recursively)."
                         (lambda (proc _event)
                           (when (memq (process-status proc) '(exit signal))
                             (unwind-protect
-                                (with-current-buffer buffer
-                                  (goto-char (point-min))
-                                  (let (result)
-                                    (while (re-search-forward flymake-bean-check-location-regexp
-                                                              nil t)
-                                      (pcase-let*
-                                          ((message (match-string 2))
-                                           (`(,begin . ,end) (flymake-diag-region
-                                                              source
-                                                              (string-to-number (match-string 1)))))
-                                        (push (flymake-make-diagnostic source begin end
-                                                                       :error message)
-                                              result)))
-                                    (funcall report-fn (nreverse result))))
+                                (if (not (and (buffer-live-p source)
+                                              (eq proc (buffer-local-value 'flymake-bean-check-process source))))
+                                    ;; Fix "obsolete report from backend" errors
+                                    (flymake-log :debug "Canceling obsolete check %s" proc)
+                                  (with-current-buffer buffer
+                                    (goto-char (point-min))
+                                    (let (result)
+                                      (while (re-search-forward flymake-bean-check-location-regexp
+                                                                nil t)
+                                        (pcase-let*
+                                            ((message (match-string 2))
+                                             (`(,begin . ,end) (flymake-diag-region
+                                                                source
+                                                                (string-to-number (match-string 1)))))
+                                          (push (flymake-make-diagnostic source begin end
+                                                                         :error message)
+                                                result)))
+                                      (funcall report-fn (nreverse result)))))
                               (kill-buffer buffer))))))
     (process-send-string
      flymake-bean-check-process

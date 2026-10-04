@@ -38,16 +38,6 @@
                     (+beancount--navigate-start-xact-or-directive-p)))
       (forward-line))))
 
-(defun +beancount--navigate-next-xact ()
-  "Move point to beginning of next xact."
-  ;; make sure we actually move to the next xact, even if we are the
-  ;; beginning of one now.
-  (if (looking-at +beancount--payee-any-status-regex)
-      (forward-line))
-  (if (re-search-forward  +beancount--payee-any-status-regex nil t)
-      (goto-char (match-beginning 0))
-    (goto-char (point-max))))
-
 (defun +beancount--navigate-beginning-of-xact ()
   "Move point to the beginning of the current xact."
   ;; need to start at the beginning of a line in case we are in the first line of an xact already.
@@ -108,7 +98,7 @@ If REVERSE (the prefix arg) is non-nil, sort the transactions in reverst order."
         (setq new-end (point))
         (narrow-to-region new-beg new-end)
         (goto-char new-beg)
-        (let ((inhibit-field-text-motion t))
+        (dlet ((inhibit-field-text-motion t))
           (sort-subr
            reverse
            #'+beancount--navigate-next-xact
@@ -131,7 +121,9 @@ If REVERSE (the prefix arg) is non-nil, sort the transactions in reverst order."
                                     "HAVING not empty(sum(position)) "
                                     "ORDER BY account")
                             (if all-accounts
-                                "" (format "WHERE account ~ \"^(Assets|Liabilities)\"" ))))))
+                                ""
+                              (format "WHERE account ~ \"^(%s|%s)\""
+                                      beancount-assets beancount-liabilities))))))
 
 (defun +beancount-transaction-at-point ()
   (let ((transaction
@@ -232,11 +224,11 @@ If DISABLE? (universal arg), reveal hidden accounts without prompting."
 (defun +beancount/next-transaction (&optional count)
   "Jump to the start of the next COUNT-th transaction."
   (interactive "p")
-  (let ((beancount-transaction-regexp
-         ;; Don't skip over timestamped directives (like balance or event
-         ;; declarations).
-         (concat beancount-timestamped-directive-regexp
-                 "\\|" beancount-transaction-regexp)))
+  (dlet ((beancount-transaction-regexp
+          ;; Don't skip over timestamped directives (like balance or event
+          ;; declarations).
+          (concat beancount-timestamped-directive-regexp
+                  "\\|" beancount-transaction-regexp)))
     (dotimes (_ (or count 1))
       (beancount-goto-next-transaction))))
 

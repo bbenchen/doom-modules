@@ -37,7 +37,12 @@ package to be installed."
 
 If they don't exist, they will be ignored. Recognized viewers are skim, evince,
 sumatrapdf, zathura, okular and pdf-tools."
-  :type '(repeat (choice skim evince sumatrapdf zathura okular pdf-tools))
+  :type '(repeat (choice (const skim)
+                         (const evince)
+                         (const sumatrapdf)
+                         (const zathura)
+                         (const okular)
+                         (const pdf-tools)))
   :group '+latex)
 
 ;;
@@ -206,15 +211,15 @@ Math faces should stay fixed by the mixed-pitch blacklist, this is mostly for
   ;; description.
   (defadvice! +latex--re-indent-itemize-and-enumerate-and-description-a (fn &rest args)
     :around #'LaTeX-fill-region-as-para-do
-    (let ((LaTeX-indent-environment-list
-           (append LaTeX-indent-environment-list
-                   '(("itemize"     +latex-indent-item-fn)
-                     ("enumerate"   +latex-indent-item-fn)
-                     ("description" +latex-indent-item-fn)))))
+    (dlet ((LaTeX-indent-environment-list
+            (append LaTeX-indent-environment-list
+                    '(("itemize"     +latex-indent-item-fn)
+                      ("enumerate"   +latex-indent-item-fn)
+                      ("description" +latex-indent-item-fn)))))
       (apply fn args)))
   (defadvice! +latex--dont-indent-itemize-and-enumerate-and-description-a (fn &rest args)
     :around #'LaTeX-fill-region-as-paragraph
-    (let ((LaTeX-indent-environment-list LaTeX-indent-environment-list))
+    (dlet ((LaTeX-indent-environment-list LaTeX-indent-environment-list))
       (dolist (item '("itemize" "enumerate" "description"))
         (setf (alist-get item LaTeX-indent-environment-list nil t #'equal) nil))
       (apply fn args))))

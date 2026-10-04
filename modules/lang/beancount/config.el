@@ -12,7 +12,10 @@ hierarchies or with massive beancount files.
 
 If set to `nil', only the current buffer is considered (the original
 behavior).")
-(put '+beancount-files 'safe-local-variable #'stringp)
+(put '+beancount-files 'safe-local-variable
+     (lambda (x) (or (memq x '(auto nil))
+                     (and (listp x)
+                          (cl-every #'stringp x)))))
 
 
 ;;
@@ -36,11 +39,12 @@ behavior).")
 
   ;; Fontify custom directives.
   ;; REVIEW: PR this upstream.
-  (add-to-list 'beancount-font-lock-keywords
-               `(,(concat "^\\(" beancount-date-regexp "\\) +"
-                          "\\(" (regexp-opt '("custom")) "\\) +")
-                 (1 'beancount-date)
-                 (2 'beancount-directive)))
+  (font-lock-add-keywords
+   'beancount-mode
+   `((,(concat "^\\(" beancount-date-regexp "\\) +"
+               "\\(" (regexp-opt '("custom")) "\\) +")
+      (1 'beancount-date)
+      (2 'beancount-directive))))
 
   (add-hook 'beancount-mode-local-vars-hook
             (if (modulep! +lsp)
@@ -73,7 +77,10 @@ behavior).")
   ;;
   ;;      Used to silence the linter in multi-file beancount projects without
   ;;      dealing with multiple-include errors and redundancies.
-  ;; REVIEW: PR features 1 and 2 upstream! 3 needs discussing.
+  ;;   4. Don't fail flymake so loudly when a newer check steps on an older
+  ;;      check, causing "Obsolete report from backend" on nearly every re-check
+  ;;      of a large ledger.
+  ;; REVIEW: PR features 1, 2 and 4 upstream! 3 needs discussing.
   (advice-add #'flymake-bean-check--run :override #'+beancount--flymake-bean-check--run-a)
 
   ;; HACK: This enhances completion for beancount-mode in the following ways:
