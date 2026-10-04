@@ -115,7 +115,7 @@ Use `+emacs-lisp/change-working-buffer' to change this. Only applies to
                   ;; highlight defined, special variables & functions
                   (when +emacs-lisp-enable-extra-fontification
                     `((+emacs-lisp-highlight-vars-and-faces . +emacs-lisp--face))))))
- 
+
   (defadvice! +emacs-lisp-append-value-to-eldoc-a (fn sym)
     "Display variable value next to documentation in eldoc."
     :around #'elisp-get-var-docstring
@@ -240,7 +240,10 @@ Use `+emacs-lisp/change-working-buffer' to change this. Only applies to
 (use-package! package-lint-flymake
   :when (modulep! :checkers syntax +flymake)
   :after flymake
-  :config (package-lint-flymake-setup))
+  :config
+  (if (> emacs-major-version 31)
+      (put 'package-lint-flymake 'flymake-always-safe t))
+  (package-lint-flymake-setup))
 
 
 (use-package! buttercup
